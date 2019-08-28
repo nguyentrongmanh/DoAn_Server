@@ -16,44 +16,44 @@ const { GraphQLObjectType,
 } = graphql;
 
 
-const getData = new Promise((ehClient, pubsub) => {
-	ehClient
-		.getPartitionIds()
-		.then(function (ids) {
-			console.log("ids", ids);
-			return ids.map(function (id) {
-				return ehClient.receive(
-					id,
-					message => {
-						pubsub.publish("data", {
-							data: {
-								id: "cjvwgziw8002g0744bejlfwtv",
-								name: "Coc",
-								level: message.body
-							}
-						});
-						console.log("message", message.body);
-					},
-					printError,
-					{ eventPosition: EventPosition.fromEnqueuedTime(Date.now()) }
-				);
-			});
-		})
-		.catch(printError);
-});
+// const getData = new Promise((ehClient, pubsub) => {
+// 	ehClient
+// 		.getPartitionIds()
+// 		.then(function (ids) {
+// 			console.log("ids", ids);
+// 			return ids.map(function (id) {
+// 				return ehClient.receive(
+// 					id,
+// 					message => {
+// 						pubsub.publish("data", {
+// 							data: {
+// 								id: "cjvwgziw8002g0744bejlfwtv",
+// 								name: "Coc",
+// 								level: message.body
+// 							}
+// 						});
+// 						console.log("message", message.body);
+// 					},
+// 					printError,
+// 					{ eventPosition: EventPosition.fromEnqueuedTime(Date.now()) }
+// 				);
+// 			});
+// 		})
+// 		.catch(printError);
+// });
 
-const Subscription = new GraphQLObjectType({
-	name: "Subscription",
-	fields: {
-		data: {
-			type: GraphQLString,
-			subscribe: async (parent, args, { ehClient, pubsub }, info) => {
-				getData(ehClient, pubsub);
-				return pubsub.asyncIterator("data");
-			}
-		},
-	}
-});
+// const Subscription = new GraphQLObjectType({
+// 	name: "Subscription",
+// 	fields: {
+// 		data: {
+// 			type: GraphQLString,
+// 			subscribe: async (parent, args, { ehClient, pubsub }, info) => {
+// 				getData(ehClient, pubsub);
+// 				return pubsub.asyncIterator("data");
+// 			}
+// 		},
+// 	}
+// });
 
 const CheckInType = new GraphQLObjectType({
 	name: "CheckIn",
@@ -293,5 +293,5 @@ const Mutation = new GraphQLObjectType({
 module.exports = new GraphQLSchema({
 	query: RootQuery,
 	mutation: Mutation,
-	subscription: Subscription
+	// subscription: Subscription
 });
