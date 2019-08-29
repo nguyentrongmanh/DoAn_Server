@@ -2,7 +2,7 @@ const graphql = require("graphql");
 const _ = require("lodash");
 const User = require("../models/users");
 const CheckIn = require("../models/checkIns");
-const { EventPosition } = require("@azure/event-hubs");
+// const { EventPosition } = require("@azure/event-hubs");
 const deviceId = "esp8266";
 const { GraphQLObjectType,
 	GraphQLString,
@@ -15,45 +15,37 @@ const { GraphQLObjectType,
 	GraphQLBoolean
 } = graphql;
 
+const { connect } = require("mqtt");
+const { MQTTPubSub } = require('graphql-mqtt-subscriptions');
+const client = connect('mqtt://soldier.cloudmqtt.com', {
+	reconnectPeriod: 1000,
+	username: "adessils",
+	password: "7CSAYPN6-BsG",
+	port: "16094"
+});
 
-// const getData = new Promise((ehClient, pubsub) => {
-// 	ehClient
-// 		.getPartitionIds()
-// 		.then(function (ids) {
-// 			console.log("ids", ids);
-// 			return ids.map(function (id) {
-// 				return ehClient.receive(
-// 					id,
-// 					message => {
-// 						pubsub.publish("data", {
-// 							data: {
-// 								id: "cjvwgziw8002g0744bejlfwtv",
-// 								name: "Coc",
-// 								level: message.body
-// 							}
-// 						});
-// 						console.log("message", message.body);
-// 					},
-// 					printError,
-// 					{ eventPosition: EventPosition.fromEnqueuedTime(Date.now()) }
-// 				);
-// 			});
-// 		})
-// 		.catch(printError);
-// });
+const pubsub = new MQTTPubSub({
+	client
+});
 
-// const Subscription = new GraphQLObjectType({
-// 	name: "Subscription",
-// 	fields: {
-// 		data: {
-// 			type: GraphQLString,
-// 			subscribe: async (parent, args, { ehClient, pubsub }, info) => {
-// 				getData(ehClient, pubsub);
-// 				return pubsub.asyncIterator("data");
-// 			}
-// 		},
-// 	}
-// });
+const Subscription = new GraphQLObjectType({
+	name: "Subscription",
+	fields: {
+		fingerPrintIn: {
+			type: GraphQLString,
+			resolve: (payload) => {
+				console.log(payload);
+				pubsub.publish("test", { test: "ok" });
+				// pubsubApollo.publish()
+				return payload;
+			},
+			subscribe: async (parent, args) => {
+				console.log(args);
+				return pubsub.asyncIterator("fingerPrintIn");
+			}
+		},
+	}
+});
 
 const CheckInType = new GraphQLObjectType({
 	name: "CheckIn",
@@ -273,25 +265,36 @@ const Mutation = new GraphQLObjectType({
 				}
 				return false;
 			}
-		}
-	}),
-	editCheckIn: {
-		type: CheckInType,
-		args: {
-			data: { type: CheckInInputType },
-			id: { type: new GraphQLNonNull(GraphQLID) }
 		},
-		resolve: async (parent, args) => {
-			const data = args.data;
-			let checkIn = CheckIn.findById(args.id);
-			await checkIn.updateOne(data);
-			return CheckIn.findById(args.id);
+		editCheckIn: {
+			type: CheckInType,
+			args: {
+				data: { type: CheckInInputType },
+				id: { type: new GraphQLNonNull(GraphQLID) }
+			},
+			resolve: async (parent, args) => {
+				const data = args.data;
+				let checkIn = CheckIn.findById(args.id);
+				await checkIn.updateOne(data);
+				return CheckIn.findById(args.id);
+			}
+		},
+		addFingerPrint: {
+			type: GraphQLBoolean,
+			args: {
+				fingerPrintId: { type: new GraphQLNonNull(GraphQLInt) }
+			},
+			resolve: async (parent, args) => {
+				pubsub.publish('addFinger', args.fingerPrintId);
+				return true;
+			}
 		}
-	}
+	})
+
 })
 
 module.exports = new GraphQLSchema({
 	query: RootQuery,
 	mutation: Mutation,
-	// subscription: Subscription
+	subscription: Subscription
 });
