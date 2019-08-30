@@ -1,9 +1,8 @@
 const graphql = require("graphql");
 const _ = require("lodash");
+const moment = require("moment");
 const User = require("../models/users");
 const CheckIn = require("../models/checkIns");
-// const { EventPosition } = require("@azure/event-hubs");
-const deviceId = "esp8266";
 const { GraphQLObjectType,
 	GraphQLString,
 	GraphQLSchema,
@@ -28,20 +27,54 @@ const pubsub = new MQTTPubSub({
 	client
 });
 
+const FingerIdType = new GraphQLObjectType({
+	name: "fingerIn",
+	fields: {
+		fingerId: { type: GraphQLString },
+	}
+})
+
 const Subscription = new GraphQLObjectType({
 	name: "Subscription",
 	fields: {
 		fingerPrintIn: {
 			type: GraphQLString,
-			resolve: (payload) => {
+			resolve: async (payload) => {
 				console.log(payload);
 				pubsub.publish("test", { test: "ok" });
-				// pubsubApollo.publish()
+				const fingerprint = parseInt(payload);
+				const user = await User.find({
+					fingerprint: fingerprint
+				});
+				if (user.status == "in") {
+					const checkIn = await CheckIn.find({
+						userId: user.id
+					});
+					const timeNow = moment();
+					checkIn.updateOne()
+				}
+
 				return payload;
 			},
 			subscribe: async (parent, args) => {
 				console.log(args);
 				return pubsub.asyncIterator("fingerPrintIn");
+			}
+		},
+		addFinPriSta: {
+			type: GraphQLBoolean,
+			resolve: (payload) => {
+				console.log(parseInt(payload));
+				if (parseInt(payload) == 1) {
+					console.log(payload);
+					return true;
+				} else {
+					return false;
+				}
+			},
+			subscribe: async (parent, args) => {
+				console.log(args);
+				return pubsub.asyncIterator("addFinPriSta");
 			}
 		},
 	}
@@ -237,33 +270,6 @@ const Mutation = new GraphQLObjectType({
 					userId: data.userId,
 				});
 				return checkIn.save();
-			}
-		},
-		initRealTimeMug: {
-			type: GraphQLBoolean,
-			args: {
-				data: { type: CheckInInputType }
-			},
-
-			resolve: async (parent, { }, { iothubClient }, info) => {
-				let methodParams = {
-					methodName: "start",
-					payload: "xxx",
-					responseTimeoutInSeconds: 30
-				};
-				console.log("methodParams", methodParams);
-				try {
-					const { result } = await iothubClient.invokeDeviceMethod(
-						deviceId,
-						methodParams
-					);
-					console.log(result);
-					if (result.status == 200) return true;
-				} catch (error) {
-					console.log(error.responseBody);
-					throw Error(error.responseBody);
-				}
-				return false;
 			}
 		},
 		editCheckIn: {

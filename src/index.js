@@ -21,22 +21,7 @@ const server = new ApolloServer({
 	cors: {
 		origin: '*',            // <- allow request from all domains
 		credentials: true
-	},
-	context: () => {
-		console.log("called")
 	}
-	// context: async () => {
-	// 	// const pubsubApollo = new PubSub();
-	// 	// const ehClient = EventHubClient.createFromIotHubConnectionString(connectionString);
-	// 	// const iothubClient = iothub.Client.fromConnectionString(connectionString);
-	// 	// const registry = await iothub.Registry.fromConnectionString(connectionString);
-	// 	return {
-	// 		// pubsubApollo,
-	// 		// pubsubMQTT
-	// 		// ehClient,
-	// 		// iothubClient,
-	// 	};
-	// }
 });
 
 // server.applyMiddleware({ app });
