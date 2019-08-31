@@ -9,6 +9,10 @@ const userSchema = new Schema({
 	tel: String,
 	status: String,
 	parentId: String,
+	fingerprint: String,
+	timeIn: String,
+	checkInType: String,
+	rfid: String,
 });
 
 module.exports = mongooes.model('User', userSchema);

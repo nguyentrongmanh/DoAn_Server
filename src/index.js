@@ -35,7 +35,7 @@ const server = new ApolloServer({
 // 	console.log(`Subscriptions ready at ws://localhost:5000/${server.subscriptionsPath}`);
 // });
 
-server.listen().then(({ url }) => {
+server.listen({ port: 5000 }).then(({ url }) => {
 	console.log(`🚀 Server ready at ${url}`)
 });
 

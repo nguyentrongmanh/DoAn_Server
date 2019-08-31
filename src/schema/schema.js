@@ -32,52 +32,6 @@ const FingerIdType = new GraphQLObjectType({
 	fields: {
 		fingerId: { type: GraphQLString },
 	}
-})
-
-const Subscription = new GraphQLObjectType({
-	name: "Subscription",
-	fields: {
-		fingerPrintIn: {
-			type: GraphQLString,
-			resolve: async (payload) => {
-				console.log(payload);
-				pubsub.publish("test", { test: "ok" });
-				const fingerprint = parseInt(payload);
-				const user = await User.find({
-					fingerprint: fingerprint
-				});
-				if (user.status == "in") {
-					const checkIn = await CheckIn.find({
-						userId: user.id
-					});
-					const timeNow = moment();
-					checkIn.updateOne()
-				}
-
-				return payload;
-			},
-			subscribe: async (parent, args) => {
-				console.log(args);
-				return pubsub.asyncIterator("fingerPrintIn");
-			}
-		},
-		addFinPriSta: {
-			type: GraphQLBoolean,
-			resolve: (payload) => {
-				console.log(parseInt(payload));
-				if (parseInt(payload) == 1) {
-					console.log(payload);
-					return true;
-				} else {
-					return false;
-				}
-			},
-			subscribe: async (parent, args) => {
-				console.log(args);
-				return pubsub.asyncIterator("addFinPriSta");
-			}
-		},
-	}
 });
 
 const CheckInType = new GraphQLObjectType({
@@ -87,6 +41,8 @@ const CheckInType = new GraphQLObjectType({
 		timeIn: { type: GraphQLString },
 		timeOut: { type: GraphQLString },
 		status: { type: GraphQLString },
+		checkInType: { type: GraphQLString },
+		checkOutType: { type: GraphQLString },
 		user: {
 			type: UserType,
 			resolve(parent, args) {
@@ -125,7 +81,10 @@ const UserType = new GraphQLObjectType({
 		tel: { type: GraphQLString },
 		status: { type: GraphQLString },
 		fingerprint: { type: GraphQLString },
+		timeIn: { type: GraphQLString },
 		rfid: { type: GraphQLString },
+		checkInType: { type: GraphQLString },
+		checkOutType: { type: GraphQLString },
 		checkIns: {
 			type: new GraphQLList(CheckInType),
 			resolve(parent, args) {
@@ -147,6 +106,125 @@ const UserType = new GraphQLObjectType({
 	}
 });
 
+
+const Subscription = new GraphQLObjectType({
+	name: "Subscription",
+	fields: {
+		fingerPrintIn: {
+			type: UserType,
+			resolve: async (payload) => {
+				console.log(payload);
+				pubsub.publish("test", { test: "ok" });
+				const fingerprint = parseInt(payload);
+				let user = await User.findOne({
+					fingerprint: fingerprint
+				});
+				let timeNow = moment().format("YYYY-MM-DD h:mm:ss");
+				if (user.status === 'in') {
+					let checkIn = await CheckIn.findOne({
+						userId: user.id,
+						status: "in"
+					});
+					await checkIn.updateOne({
+						timeOut: timeNow,
+						status: "out",
+						checkOutType: "fingerPrint"
+					});
+					await user.updateOne({
+						status: "out",
+						timeIn: "",
+					});
+				} else {
+					let checkIn = new CheckIn({
+						timeIn: timeNow,
+						userId: user.id,
+						status: "in",
+						checkInType: "fingerPrint"
+					});
+					await checkIn.save();
+					await user.updateOne({
+						status: "in",
+						timeIn: timeNow,
+						checkInType: "fingerPrint"
+					});
+				}
+
+				return User.findById(user.id);
+			},
+			subscribe: async (parent, args) => {
+				console.log(args);
+				return pubsub.asyncIterator("fingerPrintIn");
+			}
+		},
+		addFinPriSta: {
+			type: GraphQLBoolean,
+			resolve: (payload) => {
+				console.log(parseInt(payload));
+				if (parseInt(payload) == 1) {
+					console.log(payload);
+					return true;
+				} else {
+					return false;
+				}
+			},
+			subscribe: async (parent, args) => {
+				console.log(args);
+				return pubsub.asyncIterator("addFinPriSta");
+			}
+		},
+		rfidIn: {
+			type: UserType,
+			resolve: async (payload) => {
+				console.log(payload);
+				pubsub.publish("test", { test: "ok" });
+				let user = await User.findOne({
+					rfid: payload
+				});
+				if (!user) {
+					return false;
+				}
+
+				let timeNow = moment().format("YYYY-MM-DD h:mm:ss");
+				if (user.status === 'in') {
+					let checkIn = await CheckIn.findOne({
+						userId: user.id,
+						status: "in",
+					});
+					await checkIn.updateOne({
+						timeOut: timeNow,
+						status: "out",
+						checkOutType: "card"
+					});
+					await user.updateOne({
+						status: "out",
+						timeIn: ""
+					});
+
+				} else {
+					let checkIn = new CheckIn({
+						timeIn: timeNow,
+						userId: user.id,
+						status: "in",
+						checkInType: "card"
+					});
+					await checkIn.save();
+					await user.updateOne({
+						status: "in",
+						timeIn: timeNow,
+						checkInType: "card"
+					});
+				}
+				return User.findById(user.id);
+			},
+			subscribe: async (parent, args) => {
+				console.log(args);
+				return pubsub.asyncIterator("rfidIn");
+			}
+		},
+	}
+});
+
+
 const RootQuery = new GraphQLObjectType({
 	name: "RootQueryType",
 	fields: {
@@ -154,11 +232,13 @@ const RootQuery = new GraphQLObjectType({
 			type: UserType,
 			args: { id: { type: GraphQLID } },
 			resolve(parent, args) {
+				if (args.id == "") {
+					return {};
+				}
 				const user = User.findById(args.id);
 				if (user) {
 					return user;
 				}
-				return {};
 			}
 		},
 		checkIn: {
@@ -195,6 +275,7 @@ const UserInputType = new GraphQLInputObjectType({
 		parentId: { type: GraphQLString },
 		fingerprint: { type: GraphQLString },
 		rfid: { type: GraphQLString },
+		timeIn: { type: GraphQLString },
 	})
 });
 
@@ -217,17 +298,22 @@ const Mutation = new GraphQLObjectType({
 			},
 			resolve(parent, args) {
 				const data = args.data;
-				let user = new User({
+				let insertData = {
 					name: data.name,
 					age: data.age,
-					parentId: data.parentId,
 					address: data.address,
 					tel: data.tel,
 					status: data.status,
 					role: data.role,
 					fingerprint: data.fingerprint,
 					rfid: data.rfid,
-				});
+					timeIn: data.timeIn
+				};
+
+				if (data.parentId && data.parentId != "") {
+					insertData.parentId = data.parentId;
+				}
+				let user = new User(insertData);
 				return user.save();
 			}
 		},
@@ -268,6 +354,7 @@ const Mutation = new GraphQLObjectType({
 					timeIn: data.timeIn,
 					timeOut: data.timeOut,
 					userId: data.userId,
+					status: status
 				});
 				return checkIn.save();
 			}
@@ -285,6 +372,16 @@ const Mutation = new GraphQLObjectType({
 				return CheckIn.findById(args.id);
 			}
 		},
+		deleteALl: {
+			type: GraphQLBoolean,
+			resolve: async (parent, args) => {
+				await CheckIn.deleteMany({});
+				await User.updateMany({
+					status: ""
+				});
+				return true;
+			}
+		},
 		addFingerPrint: {
 			type: GraphQLBoolean,
 			args: {
@@ -292,6 +389,13 @@ const Mutation = new GraphQLObjectType({
 			},
 			resolve: async (parent, args) => {
 				pubsub.publish('addFinger', args.fingerPrintId);
+				return true;
+			}
+		},
+		addRfid: {
+			type: GraphQLBoolean,
+			resolve: async (parent, args) => {
+				pubsub.publish('addRfid', "1");
 				return true;
 			}
 		}
