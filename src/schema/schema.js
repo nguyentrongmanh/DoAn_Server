@@ -376,9 +376,10 @@ const Mutation = new GraphQLObjectType({
 			type: GraphQLBoolean,
 			resolve: async (parent, args) => {
 				await CheckIn.deleteMany({});
-				await User.updateMany({
-					status: ""
-				});
+				await User.deleteMany({});
+				// await User.updateMany({
+				// 	status: ""
+				// });
 				return true;
 			}
 		},
