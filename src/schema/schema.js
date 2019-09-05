@@ -393,13 +393,20 @@ const Mutation = new GraphQLObjectType({
 				return true;
 			}
 		},
-		addRfid: {
+		openDoor: {
 			type: GraphQLBoolean,
 			resolve: async (parent, args) => {
-				pubsub.publish('addRfid', "1");
+				pubsub.publish('openDoor', 1);
 				return true;
 			}
-		}
+		},
+		closeDoor: {
+			type: GraphQLBoolean,
+			resolve: async (parent, args) => {
+				pubsub.publish('closeDoor', 1);
+				return true;
+			}
+		},
 	})
 
 })
