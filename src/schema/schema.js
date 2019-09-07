@@ -16,11 +16,12 @@ const { GraphQLObjectType,
 
 const { connect } = require("mqtt");
 const { MQTTPubSub } = require('graphql-mqtt-subscriptions');
+
 const client = connect('mqtt://soldier.cloudmqtt.com', {
 	reconnectPeriod: 1000,
-	username: "adessils",
-	password: "7CSAYPN6-BsG",
-	port: "16094"
+	username: "gpjtxrol",
+	password: "OadOIPKJM_YD",
+	port: "14954"
 });
 
 const pubsub = new MQTTPubSub({
@@ -176,14 +177,13 @@ const Subscription = new GraphQLObjectType({
 			type: UserType,
 			resolve: async (payload) => {
 				console.log(payload);
-				pubsub.publish("test", { test: "ok" });
 				let user = await User.findOne({
 					rfid: payload
 				});
 				if (!user) {
+					pubsub.publish("rfidStatus", 0);
 					return false;
 				}
-
 				let timeNow = moment().format("YYYY-MM-DD h:mm:ss");
 				if (user.status === 'in') {
 					let checkIn = await CheckIn.findOne({
@@ -214,6 +214,7 @@ const Subscription = new GraphQLObjectType({
 						checkInType: "card"
 					});
 				}
+				pubsub.publish("rfidStatus", 1);
 				return User.findById(user.id);
 			},
 			subscribe: async (parent, args) => {
@@ -377,9 +378,6 @@ const Mutation = new GraphQLObjectType({
 			resolve: async (parent, args) => {
 				await CheckIn.deleteMany({});
 				await User.deleteMany({});
-				// await User.updateMany({
-				// 	status: ""
-				// });
 				return true;
 			}
 		},
@@ -393,13 +391,20 @@ const Mutation = new GraphQLObjectType({
 				return true;
 			}
 		},
-		addRfid: {
+		openDoor: {
 			type: GraphQLBoolean,
 			resolve: async (parent, args) => {
-				pubsub.publish('addRfid', "1");
+				pubsub.publish('openDoor', 1);
 				return true;
 			}
-		}
+		},
+		closeDoor: {
+			type: GraphQLBoolean,
+			resolve: async (parent, args) => {
+				pubsub.publish('closeDoor', 1);
+				return true;
+			}
+		},
 	})
 
 })
