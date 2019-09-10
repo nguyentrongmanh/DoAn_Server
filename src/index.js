@@ -18,4 +18,6 @@ var port = process.env.PORT || 5000;
 
 server.listen({ port: port }).then(({ url }) => {
 	console.log(`🚀 Server ready at ${url}`)
+	console.log(port);
+	console.log(url);
 });
