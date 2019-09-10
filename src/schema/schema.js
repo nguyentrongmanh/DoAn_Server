@@ -16,7 +16,6 @@ const { GraphQLObjectType,
 
 const { connect } = require("mqtt");
 const { MQTTPubSub } = require('graphql-mqtt-subscriptions');
-
 const client = connect('mqtt://soldier.cloudmqtt.com', {
 	reconnectPeriod: 1000,
 	username: "gpjtxrol",
@@ -378,6 +377,9 @@ const Mutation = new GraphQLObjectType({
 			resolve: async (parent, args) => {
 				await CheckIn.deleteMany({});
 				await User.deleteMany({});
+				// await User.updateMany({
+				// 	status: ""
+				// });
 				return true;
 			}
 		},

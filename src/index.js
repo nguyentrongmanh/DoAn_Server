@@ -1,7 +1,7 @@
 const mongooes = require('mongoose');
 const schema = require("./schema/schema");
 const { ApolloServer } = require('apollo-server');
-mongooes.connect("mongodb+srv://admin123:admin123@cluster0-t40xx.mongodb.net/test?retryWrites=true&w=majority", { useNewUrlParser: true });
+mongooes.connect("mongodb+srv://admin123:admin123@cluster0-hmgvh.mongodb.net/test?retryWrites=true&w=majority", { useNewUrlParser: true });
 mongooes.connection.once('open', () => {
 	console.log('DB CONNECTD');
 });
@@ -9,7 +9,7 @@ mongooes.connection.once('open', () => {
 const server = new ApolloServer({
 	schema,
 	cors: {
-		origin: '*',
+		origin: '*',            // <- allow request from all domains
 		credentials: true
 	}
 });
