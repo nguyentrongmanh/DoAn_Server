@@ -1,7 +1,7 @@
 const mongooes = require('mongoose');
 const schema = require("./schema/schema");
 const express = require("express");
-const { ApolloServer } = require('apollo-server');
+const { ApolloServer } = require('apollo-server-express');
 mongooes.connect("mongodb+srv://admin123:admin123@cluster0-hmgvh.mongodb.net/test?retryWrites=true&w=majority", { useNewUrlParser: true });
 mongooes.connection.once('open', () => {
 	console.log('DB CONNECTD');
